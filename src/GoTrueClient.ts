@@ -922,6 +922,8 @@ export default class GoTrueClient {
    * the values in it may not be authentic and therefore it's strongly advised
    * against using this method and its results in such circumstances. A warning
    * will be emitted if this is detected. Use {@link #getUser()} instead.
+   *
+   * This should be phased out in favor of {@link #dangerouslyGetSession}.
    */
   async getSession() {
     await this.initializePromise
@@ -935,7 +937,7 @@ export default class GoTrueClient {
     if (result.data && this.storage.isServer) {
       if (!this.insecureGetSessionWarningShown) {
         console.warn(
-          'Using supabase.auth.getSession() is potentially insecure as it loads data directly from the storage medium (typically cookies) which may not be authentic. Prefer using supabase.auth.getUser() instead. To suppress this warning call supabase.auth.getUser() before you call supabase.auth.getSession().'
+          'Using supabase.auth.getSession() is potentially insecure as it loads data directly from the storage medium (typically cookies) which may not be authentic. Prefer using supabase.auth.getUser() instead. To suppress this warning call supabase.auth.getUser() before you call supabase.auth.getSession() or use supabase.auth.dangerouslyGetSession() if you know what you are doing.'
         )
         this.insecureGetSessionWarningShown = true
       }
@@ -943,6 +945,31 @@ export default class GoTrueClient {
 
     return result
   }
+
+    /**
+   * Returns the session, refreshing it if necessary.
+   *
+   * The session returned can be null if the session is not detected which can happen in the event a user is not signed-in or has logged out.
+   *
+   * **IMPORTANT:** This method loads values directly from the storage attached
+   * to the client. If that storage is based on request cookies for example,
+   * the values in it may not be authentic and therefore it's strongly advised
+   * against using this method and its results in such circumstances.
+   * Use {@link #getUser()} instead.
+   *
+   * This method is exactly the same as {@link #getSession} but it does not emit a warning if used in a server environment.
+   */
+    async dangerouslyGetSession() {
+      await this.initializePromise
+
+      const result = await this._acquireLock(-1, async () => {
+        return this._useSession(async (result) => {
+          return result
+        })
+      })
+
+      return result
+    }
 
   /**
    * Acquires a global lock based on the storage key.
